@@ -1808,16 +1808,23 @@ function showVerse(reset){
 $('#bibNext').addEventListener('click',()=>{vi=(vi+1)%VERSES.length;$('#bibAns').hidden=true;$('#myThought').value='';showVerse(false);});
 let sampleP=null;
 /* 외부(GitHub Pages 등)에서는 Claude 샘플링이 없으므로 무료·키 없는 공개 AI(Pollinations)로 대체 */
-const EXT_URLS=['https://text.pollinations.ai/openai','https://text.pollinations.ai/'];
+const EXT_TRY=[['https://text.pollinations.ai/openai','openai-fast'],['https://text.pollinations.ai/openai','openai']];
 async function extSample(input,opts){
-  opts=opts||{};const msgs=typeof input==='string'?[{role:'user',content:input}]:input;let last=null;
-  for(const u of EXT_URLS){
+  opts=opts||{};let msgs=typeof input==='string'?[{role:'user',content:input}]:input.slice();
+  msgs=[{role:'system',content:'답변은 한국어로 핵심만 3~4문장(250자 안팎) 이내로 간결하게 하세요.'}].concat(msgs);let last=null;
+  for(const [u,model] of EXT_TRY){
     try{
-      const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},signal:opts.signal,body:JSON.stringify({model:'openai',messages:msgs,temperature:.8,private:true})});
+      const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},signal:opts.signal,body:JSON.stringify({model,messages:msgs,temperature:.8,max_tokens:380,stream:true,private:true})});
       if(!r.ok)throw new Error('http '+r.status);
-      const raw=await r.text();let text=raw;
-      try{const j=JSON.parse(raw);text=(j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content)||j.text||raw;}catch(_){}
-      text=String(text||'').trim();if(!text)throw new Error('empty');
+      let text='';
+      if(r.body&&r.body.getReader){
+        const rd=r.body.getReader(),dec=new TextDecoder();let buf='';
+        for(;;){const {done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});
+          const lines=buf.split('\n');buf=lines.pop();
+          for(const ln of lines){const t=ln.trim();if(!t.startsWith('data:'))continue;const d=t.slice(5).trim();if(d==='[DONE]')continue;
+            try{const j=JSON.parse(d),c=j.choices&&j.choices[0]&&((j.choices[0].delta&&j.choices[0].delta.content)||(j.choices[0].message&&j.choices[0].message.content));if(c){text+=c;if(opts.onText)opts.onText({text});}}catch(_){}}}
+      }else{const j=await r.json();text=(j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content)||'';}
+      text=text.trim();if(!text)throw new Error('empty');
       if(opts.onText)opts.onText({text});return {text,truncated:false};
     }catch(e){if(e&&e.name==='AbortError')throw e;last=e;}
   }
@@ -1897,7 +1904,7 @@ async function ask(q,aiQ){
   const sm=await getSample();
   if(!sm){const t=(curP&&curP.fb)||FALLBACK[hist.length%FALLBACK.length];m.textContent=t;hist.push({role:'assistant',content:t});busy=false;$('#chatSend').disabled=false;return;}
   abortC=new AbortController();
-  const P=curP||YOGA_P,sys=P.sys+SAFE+'\n\n대화 기록:\n'+hist.slice(-8).map(h=>(h.role==='user'?'손님: ':P.who+': ')+h.content).join('\n')+'\n\n캐릭터로서 마지막 손님의 말에 답하세요.';
+  const P=curP||YOGA_P,sys=P.sys+SAFE+'\n\n대화 기록:\n'+hist.slice(sm===extSample?-4:-8).map(h=>(h.role==='user'?'손님: ':P.who+': ')+h.content).join('\n')+'\n\n캐릭터로서 마지막 손님의 말에 답하세요.';
   try{const r=await sm(sys,{modelTier:'default',cache:false,signal:abortC.signal,onText:({text})=>{m.textContent=text;log.scrollTop=log.scrollHeight;}});
     m.textContent=r.text;hist.push({role:'assistant',content:r.text});if(soundOn)tok(.5);}
   catch(e){m.textContent=e&&e.code==='not_granted'?'선생님과의 대화를 위해 권한을 허용해 주세요.':'잠시 말씀이 닿지 않았어요. 한 번만 더 여쭤 주세요.';hist.pop();}
