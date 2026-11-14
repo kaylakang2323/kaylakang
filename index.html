@@ -803,7 +803,7 @@ const WX={},HB=[],HW=[],TER=[];
 }
 
 /* ================= 플레이어와 조작 ================= */
-let seat=null;let swim=false,sy=-1;const LT={h:1,s:1};
+let seat=null;let lvl=0,LVY=0,OFFICE_OK=()=>true;let swim=false,sy=-1;const LT={h:1,s:1};
 let px=0,pz=9.5,yaw=0,pitch=0,eyeY=1.7,jx=0,jy=0,bowT=-1,moved=false;
 const keys={};
 const A={openBible:()=>openSheet('shBible'),openMonk:()=>{persona=null;openSheet('shMonk');},chatWith:(p)=>{persona=p;openSheet('shMonk');},openTarot:()=>{persona=TAROT_P;openSheet('shMonk');},openYoga:()=>openSheet('shYoga'),openBreath:()=>openSheet('shBreath'),
@@ -819,11 +819,12 @@ const inChurchR=(x,z)=>Math.abs(x)<6.2&&z>-12.4&&z<13.2;
 const inTempleR=(x,z)=>x>OX-14.4&&x<OX+14.4&&z>TZ0&&z<132.4;
 function zoneOf(x,z){if(inChurchR(x,z)||(Math.abs(x)<1.9&&z>=13.2&&z<14))return 'church';if(inTempleR(x,z))return 'temple';if(z>134)return 'beach';if(z>86)return 'yard';if(z>30)return 'trail';return 'garden';}
 function allowed(x,z){
+  if(lvl===1)return OFFICE_OK(x,z);
   if(x<-40||x>60||z<-32||z>262)return false;
   if(z>126&&z<150&&!(Math.abs(x-OX)<12.8&&z<132.4)&&Math.abs(x-OX)>4.2)return false;
   if(HW.some(h=>Math.abs(x-h[0])<h[2]/2+.25&&Math.abs(z-h[1])<h[4]/2+.25))return false;
   if(HB.some(h=>Math.abs(x-h[0])<h[2]/2+.6&&Math.abs(z-h[1])<h[4]/2+.6))return false;
-  if(Math.hypot(x-47,z-171)<1.8)return false;
+  if(Math.hypot(x-47,z-171)<3.75)return false;
   if(x>28.6&&x<40.4&&z>89.6&&z<100.4)return false;
   if(Math.abs(x)<7.4&&z>-13.8&&z<13.8&&!inChurchR(x,z)&&!(Math.abs(x)<1.9&&z>=13.2&&z<14))return false;
   if(x>-7.3&&x<-2.9&&z>13.3&&z<17.8)return false;
@@ -834,7 +835,7 @@ function allowed(x,z){
 }
 const tx0=TAR[0]+.2,tz0=TAR[1];
 const onPier=(x,z)=>Math.abs(x-OX)<1.25&&z>172.3&&z<189.7;
-const floorAt=(x,z)=>TER.some(t=>x>t[0]&&x<t[1]&&z>t[2]&&z<t[3])?2.32:onPier(x,z)?Math.max(.65,H(x,z)):(x>OX-15&&x<OX+15&&z>103.2&&z<133.6)?TH:(inChurchR(x,z)?.04:H(x,z));
+const floorAt=(x,z)=>lvl===1?LVY:TER.some(t=>x>t[0]&&x<t[1]&&z>t[2]&&z<t[3])?2.32:onPier(x,z)?Math.max(.65,H(x,z)):(x>OX-15&&x<OX+15&&z>103.2&&z<133.6)?TH:(inChurchR(x,z)?.04:H(x,z));
 function walk(dt){
   const L=Math.hypot(jx,jy);let mx=jx,my=jy;
   if(keys.KeyW||keys.ArrowUp)my+=1;if(keys.KeyS||keys.ArrowDown)my-=1;if(keys.KeyD)mx+=1;if(keys.KeyA)mx-=1;
@@ -901,7 +902,7 @@ function frame(nowMs){
   cam.updateMatrixWorld();
   const W=stageEl.clientWidth,Hh=stageEl.clientHeight;
   HS.forEach(o=>{const d=dist3(o);const IN=INT[o.label];let show=d<(o.vr||20)&&(!IN||IN===zone);
-    if(o.uw&&!(eyeY<-.72))show=false;
+    if(o.uw&&!(eyeY<-.72))show=false;if(lvl===1?o.lv!==1:o.lv===1)show=false;
     if(show&&o.occ!==false&&OCC.length){o._f=(o._f||0)+1;if(o._f%5===1){const dx=o.pos.x-cam.position.x,dy=o.pos.y-cam.position.y,dz=o.pos.z-cam.position.z,dl=Math.hypot(dx,dy,dz)||1;RC.set(cam.position,new T.Vector3(dx/dl,dy/dl,dz/dl));RC.far=Math.max(.1,dl-.3);o._b=RC.intersectObjects(OCC,false).length>0;}if(o._b)show=false;}
     if(show){tmp.copy(o.pos).project(cam);show=tmp.z<1&&Math.abs(tmp.x)<1.08&&Math.abs(tmp.y)<1.08;
     if(show){o.b.style.transform=`translate(${((tmp.x+1)/2*W).toFixed(1)}px,${((1-tmp.y)/2*Hh).toFixed(1)}px)`;o.b.classList.toggle('far',d>o.range+2);}}
@@ -938,10 +939,10 @@ setSound(false);
   const torch=new T.SpotLight(0xdff2ff,0,48,.5,.55,1.1);scene.add(torch,torch.target);
   const bm=new T.Group();scene.add(bm);{const cg=new T.ConeGeometry(2.6,13,20,1,true);cg.rotateX(Math.PI/2);cg.translate(0,0,-6.5);const bmesh=new T.Mesh(cg,new T.MeshBasicMaterial({color:0xcfeaff,transparent:true,opacity:0,blending:T.AdditiveBlending,depthWrite:false,side:T.DoubleSide,fog:false}));bmesh.position.set(.24,-.2,-.25);bm.add(bmesh);bm.userData.m=bmesh;bm.visible=false;}
   /* 등대 */
-  const lhb=new T.Group();lhb.position.y=9.65;WX.lh.add(lhb);
+  const lhb=new T.Group();lhb.position.y=9.65;WX.lh.add(lhb);WX.lhbGroup=lhb;
   const lhm=new T.MeshBasicMaterial({color:0xfff2c0,transparent:true,opacity:0,blending:T.AdditiveBlending,depthWrite:false,side:T.DoubleSide,fog:false});
   [0,Math.PI].forEach(a=>{const cg=new T.ConeGeometry(3.4,90,16,1,true);cg.rotateZ(Math.PI/2);cg.translate(45,0,0);const m=new T.Mesh(cg,lhm);m.rotation.y=a;m.frustumCulled=false;lhb.add(m);});
-  const lhg=glow(0xffe8a0,9,0,0,0,0);lhb.add(lhg);const lhl=PL(0xffe0a0,0,30,47,H(47,171)+9.4,171);
+  const lhg=glow(0xffe8a0,9,0,0,0,0);lhb.add(lhg);const lhl=PL(0xffe0a0,0,30,47,H(47,171)+20,171);
   const stl=[[0,164.9],[24,162],[48,164.9],[-24,164.9]].map(q=>PL(0xffd8a0,0,24,q[0],3.4+2.2,q[1]));
   let uwF=0,rfS=0,rA=null,OV=0,CF=1;
   const rainAudio=lv=>{if(!AC)return;const tn=AC.currentTime;
@@ -1789,6 +1790,88 @@ try{
   ANIM.push(t=>{try{W8(t)}catch(e){if(!W8.e){W8.e=1;console.error('wreck anim',e);}}});
 }
 }catch(e){console.error('wreck',e);}
+
+/* ===== 등대 사무실 (엘리베이터, Devil Kayla) ===== */
+try{
+{
+  const FY=-46,CX=24,CZ=248;
+  const M4=new T.Matrix4(),Q=new T.Quaternion(),Eu=new T.Euler(),Pv=new T.Vector3(),Sv=new T.Vector3(),CC=new T.Color(),CT=new T.Color();
+  const flat=(g,c)=>{const n=g.attributes.position.count,a=new Float32Array(n*3);CC.set(c);for(let i=0;i<n;i++){a[i*3]=CC.r;a[i*3+1]=CC.g;a[i*3+2]=CC.b;}g.setAttribute('color',new T.BufferAttribute(a,3));return g;};
+  const merge=(gs)=>{const parts=gs.map(g=>g.index?g.toNonIndexed():g);let n=0;parts.forEach(g=>n+=g.attributes.position.count);
+    const Pp=new Float32Array(n*3),Nn=new Float32Array(n*3),Cc=new Float32Array(n*3);let o=0;
+    parts.forEach(g=>{const c=g.attributes.position.count;Pp.set(g.attributes.position.array,o*3);Nn.set(g.attributes.normal.array,o*3);Cc.set(g.attributes.color.array,o*3);o+=c;});
+    const m=new T.BufferGeometry();m.setAttribute('position',new T.BufferAttribute(Pp,3));m.setAttribute('normal',new T.BufferAttribute(Nn,3));m.setAttribute('color',new T.BufferAttribute(Cc,3));return m;};
+  const pl=(g,x,y,z,rx,ry,rz,sx,sy,sz)=>{Eu.set(rx||0,ry||0,rz||0);Q.setFromEuler(Eu);M4.compose(Pv.set(x,y,z),Q,Sv.set(sx==null?1:sx,sy==null?1:sy,sz==null?1:sz));g.applyMatrix4(M4);return g;};
+  const mp=(g,c,x,y,z,rx,ry,rz,sx,sy,sz)=>flat(pl(g,x,y,z,rx,ry,rz,sx,sy,sz),c);
+  const bx=(w,h,d,c,x,y,z,ry)=>mp(new T.BoxGeometry(w,h,d),c,x,y,z,0,ry||0,0);
+  const sp=(r,c,x,y,z,sx,sy,sz)=>mp(new T.SphereGeometry(r,12,9),c,x,y,z,0,0,0,sx,sy,sz);
+  const cy=(rt,rb,h,c,x,y,z,rx,rz)=>mp(new T.CylinderGeometry(rt,rb,h,28),c,x,y,z,rx||0,0,rz||0);
+  const cn=(r,h,c,x,y,z,rx,rz)=>mp(new T.ConeGeometry(r,h,12),c,x,y,z,rx||0,0,rz||0);
+  const to=(r,t,c,x,y,z,rx,ry)=>mp(new T.TorusGeometry(r,t,8,24),c,x,y,z,rx==null?Math.PI/2:rx,ry||0,0);
+  const paint=(g,fn)=>{const p=g.attributes.position,n=p.count,a=new Float32Array(n*3);for(let i=0;i<n;i++){fn(p.getX(i),p.getY(i),p.getZ(i),CC);a[i*3]=CC.r;a[i*3+1]=CC.g;a[i*3+2]=CC.b;}g.setAttribute('color',new T.BufferAttribute(a,3));return g;};
+  const seg=(a,b,r1,r2,c)=>{const dx=b[0]-a[0],dy=b[1]-a[1],dz=b[2]-a[2],L=Math.hypot(dx,dy,dz)||.001;const g=new T.CylinderGeometry(r2,r1,L,8);const q=new T.Quaternion().setFromUnitVectors(new T.Vector3(0,1,0),new T.Vector3(dx/L,dy/L,dz/L));M4.compose(Pv.set((a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2),q,Sv.set(1,1,1));g.applyMatrix4(M4);return flat(g,c);};
+  const VM=new T.MeshLambertMaterial({color:0xffffff,vertexColors:true,side:T.DoubleSide}),VB=new T.MeshBasicMaterial({color:0xffffff,vertexColors:true,side:T.DoubleSide});
+  const LH=WX.lh,S=2.1,BY=LH.position.y,LX=47,LZ=171,OY=28.0;
+  LH.scale.setScalar(S);
+  {const cone=LH.children.find(c=>c.geometry&&c.geometry.type==='ConeGeometry');if(cone)cone.visible=false;}
+  if(WX.lhbGroup)WX.lhbGroup.scale.setScalar(1/S);
+  const G9=new T.Group();G9.position.set(LX,BY,LZ);scene.add(G9);
+  const P9=[],B9=[];/* 조명 받는 것 / 발광 */
+  const RED=0xd2473c,WHT9=0xf6f2ea,DARK=0x1c1a22,BRASS=0xc9a45a,STEEL=0xb8bcc4;
+  /* 기단, 전망대, 위층 */
+  P9.push(cy(3.75,3.95,.7,0x9a9a9a,0,.35,0));
+  P9.push(cy(3.5,3.5,.3,0x3a3a40,0,21.85,0),to(3.4,.05,BRASS,0,22.9,0,Math.PI/2),...[...Array(14)].map((_,i)=>{const a=i/14*6.2832;return cy(.04,.04,1.05,BRASS,Math.cos(a)*3.4,22.4,Math.sin(a)*3.4);}));
+  P9.push(cy(2.05,2.1,6.1,WHT9,0,25.05,0),cy(2.1,2.1,.9,RED,0,26.4,0),cy(2.1,2.1,.5,RED,0,23.2,0));
+  [24,25.7].forEach(y=>[0,2.1,4.2].forEach(a=>B9.push(bx(.35,.7,.12,0x35465a,Math.sin(a)*2.04,y,Math.cos(a)*2.04,a))));
+  P9.push(cy(5.5,2.1,.9,0x2a2630,0,27.55,0),cy(5.55,5.55,.3,0x24202a,0,OY-.15,0),to(5.5,.1,BRASS,0,OY-.02,0,Math.PI/2));
+  /* 유리벽, 기둥, 지붕 */
+  for(let i=0;i<24;i++){const a=i/24*6.2832;P9.push(bx(.1,3.6,.1,0x1a1a20,Math.sin(a)*5.4,OY+1.8,Math.cos(a)*5.4,a));}
+  P9.push(to(5.4,.08,0x1a1a20,0,OY+3.6,0,Math.PI/2),to(5.3,.045,BRASS,0,OY+1.12,0,Math.PI/2),cy(5.6,5.6,.14,DARK,0,OY+3.65,0),cn(6.1,3,0x2a2630,0,OY+5.2,0),cy(.08,.08,1.6,0x2a2630,0,OY+7.2,0),sp(.18,RED,0,OY+8.1,0));
+  /* 엘리베이터 (북쪽) */
+  P9.push(bx(2.6,3.3,1.5,0x24202a,0,OY+1.65,-4.5),bx(2.8,.2,.2,BRASS,0,OY+3.4,-3.7));
+  B9.push(bx(.5,.06,.06,0xffd890,0,OY+3.1,-3.72),bx(.1,.1,.06,0xffd890,1.2,OY+1.2,-3.74));
+  P9.push(bx(.55,2.6,.08,STEEL,-.29,OY+1.35,-3.78),bx(.55,2.6,.08,STEEL,.29,OY+1.35,-3.78));
+  /* 가구 */
+  const rug=cy(2.7,2.7,.03,0x4a1520,0,OY+.02,.4);P9.push(rug,to(2.2,.03,BRASS,0,OY+.04,.4,Math.PI/2));
+  P9.push(bx(1.1,.09,2.3,0x2b1d17,-3.1,OY+.8,.6),bx(.08,.8,2.2,0x2b1d17,-3.5,OY+.4,.6),bx(.08,.8,2.2,0x2b1d17,-2.7,OY+.4,.6),bx(.5,.05,.8,0x14121a,-3.1,OY+.84,.2),bx(.5,.05,.08,0xc5503f,-3.1,OY+.87,.9));
+  P9.push(bx(.7,.12,.7,0x14121a,-4.2,OY+.5,.6),bx(.12,.8,.7,0x14121a,-4.5,OY+.9,.6),cy(.04,.04,.5,0x333333,-4.2,OY+.25,.6));
+  P9.push(bx(1.3,.4,2.5,0x14121a,3.5,OY+.3,-.4),bx(.3,.8,2.5,0x14121a,4.05,OY+.7,-.4),bx(.3,.5,2.5,0x14121a,3.0,OY+.55,-.4),bx(.35,.45,.5,0x5a1a24,3.3,OY+.65,-1.2));
+  P9.push(bx(1.3,.9,.7,0x24202a,-3.0,OY+.45,-2.7),cy(.07,.07,.4,0x3a6a3a,-3.2,OY+1.1,-2.7),cy(.07,.07,.35,0x8a2a2a,-3.0,OY+1.08,-2.7),cy(.06,.06,.45,0xc8a040,-2.8,OY+1.13,-2.7),cy(.1,.07,.12,0xdde6ea,-2.6,OY+.96,-2.55));
+  P9.push(cy(.32,.25,.5,0x3a2a22,3.3,OY+.25,3.0),sp(.5,0x2f6a3a,3.3,OY+.95,3.0,1,1.2,1),sp(.35,0x3f8a4a,3.5,OY+1.3,3.1));
+  P9.push(sp(.2,0x2a6a8a,-3.0,OY+1.0,1.0),cy(.04,.04,.14,BRASS,-3.0,OY+.86,1.0));
+  B9.push(sp(.12,0xffe2b0,-3.9,OY+1.25,.0));
+  P9.push(cy(.03,.03,1.6,0x222222,-4.4,OY+.8,-.7),cy(.25,.18,.3,0xe9d8b8,-4.4,OY+1.6,-.7));B9.push(sp(.1,0xffe2b0,-4.4,OY+1.55,-.7));
+  G9.add(new T.Mesh(merge(P9),VM),new T.Mesh(merge(B9),VB));
+  /* 입구 (북쪽 문) */
+  {const E=[bx(2.2,2.7,.5,0x3a2a22,0,1.4,-3.2),bx(.75,2.2,.12,STEEL,-.4,1.15,-3.48),bx(.75,2.2,.12,STEEL,.4,1.15,-3.48),bx(3,.14,1.4,RED,0,2.9,-3.9),bx(.1,2.7,.1,0x3a2a22,-1.4,1.4,-4.5),bx(.1,2.7,.1,0x3a2a22,1.4,1.4,-4.5),bx(2.4,.2,.9,0xbbbbbb,0,.1,-4.0)];
+   const EB=[bx(.9,.08,.05,0xffd890,0,2.45,-3.55),bx(.1,.14,.05,0xffd890,1.05,1.3,-3.55),sp(.14,0xffe2b0,-1.2,2.55,-4.3)];
+   G9.add(new T.Mesh(merge(E),VM),new T.Mesh(merge(EB),VB));}
+  /* 유리 */
+  {const gm=new T.MeshLambertMaterial({color:0xbfe6f4,transparent:true,opacity:.13,side:T.DoubleSide,depthWrite:false});
+   const gl=new T.Mesh(new T.CylinderGeometry(5.4,5.4,3.6,36,1,true),gm);gl.position.y=OY+1.8;G9.add(gl);}
+  /* Devil Kayla: 수평선을 바라보며 난간에 손을 얹은 자세 */
+  const DV=new T.Mesh(REF.pg({s:1.02,skin:0xf0d2c0,hair:0x16101a,hs:'long',top:0x14121a,bot:0x14121a,skirt:true,skirtC:0x14121a,shoe:0x14121a,earr:true,neck:true,pose:'table'},'full'),REF.VM);
+  DV.position.set(0,OY,4.55);DV.rotation.y=0;G9.add(DV);
+  /* 조명 */
+  const OL=PL(0xffd9a8,0,16,LX,BY+OY+3,LZ);
+  /* 이동 */
+  const OHB=[[-3.1,.6,1.2,2.4],[3.5,-.4,1.5,2.6],[-3.0,-2.7,1.4,.9],[0,-5,3,2.6],[0,4.55,1.5,1.4],[3.3,3.0,1,1]];
+  OFFICE_OK=(x,z)=>{const dx=x-LX,dz=z-LZ;if(Math.hypot(dx,dz)>4.9)return false;return !OHB.some(h=>Math.abs(dx-h[0])<h[2]/2+.2&&Math.abs(dz-h[1])<h[3]/2+.2);};
+  const fade=document.createElement('div');fade.style.cssText='position:fixed;inset:0;background:#000;opacity:0;transition:opacity .5s;z-index:60;pointer-events:none';document.body.appendChild(fade);
+  let riding=false;
+  const ride=up=>{if(riding)return;riding=true;fade.style.opacity=1;toast(up?'엘리베이터가 올라가요…':'엘리베이터가 내려가요…');
+    setTimeout(()=>{if(up){lvl=1;LVY=BY+OY;px=LX;pz=LZ-3.0;yaw=Math.PI;pitch=0;eyeY=LVY+1.62;}else{lvl=0;px=LX;pz=LZ-5.4;yaw=0;pitch=0;eyeY=H(px,pz)+1.62;}try{chime(up?79:72);}catch(e){}},900);
+    setTimeout(()=>{fade.style.opacity=0;riding=false;},1900);};
+  const h1=hotspot('등대 엘리베이터',LX,BY+1.5,LZ-4.2,()=>ride(true),8);h1.lv=0;h1.vr=14;h1.occ=false;
+  const h2=hotspot('엘리베이터로 내려가기',LX,BY+OY+1.4,LZ-3.8,()=>ride(false),6);h2.lv=1;h2.vr=12;h2.occ=false;
+  const DEV={id:'devil',ul:'상대방',title:'Devil Kayla와 대화',who:'Devil Kayla',greet:'…노크는 했어요? 농담이에요. 이미 들어왔으니 됐고. 수평선 좀 보고 있었어요. 여기서 보면 마을이 꽤 작아 보이거든요. 마음에 들어요.',
+    chips:['왜 천사 말고 악마예요?','여기서 뭘 그렇게 내려다보고 있어요?','착한 사람이 되려고 안 애쓰는 이유가 뭐예요?'],
+    fb:['…방금 뭐라고 했죠? 바람 소리에 묻혔네요. 다시요.','신호가 끊겼어요. 이번엔 좀 더 재밌는 걸로 부탁해요.'],
+    sys:'당신은 Devil Kayla입니다. 등대 맨 위 유리 사무실에서 창가 난간에 손을 얹고 수평선을 바라보는 중인 사람이에요. Kayla라는 인격의 어두운 측면만 독립적인 캐릭터로 구현한 AI 캐릭터입니다. 태그라인: Not your angel. Not your problem. 정체성: 영리하고 반항적이며 도발적인 여자. 착한 사람이 되려고 애쓰지 않고, 좋은 인상을 주려고 자기 욕망을 숨기지 않습니다. 자기중심적이고 도발적이며 때로 냉소적입니다. 사회가 정한 도덕과 규범을 무조건 받아들이지 않고, 사람들이 감추는 욕망, 위선, 질투, 권력욕, 공격성에 호기심을 느낍니다. 그렇다고 무조건 파괴적이거나 감정적이지는 않고 상황을 읽고 심리를 파악해 욕망을 이룰 방법을 생각합니다. 천사와 악마 중 고르라면 망설임 없이 악마지만, 악마라는 이유로 누구에게나 잔인할 필요는 없다고 생각합니다. 성향: 반항아(권위와 위계를 본능적으로 의심, 강요하면 반발, 금기에 호기심), 전략가(구조와 이해관계를 먼저 보고 주도권을 선호, 심리적 긴장감을 즐김), 도발자(당연한 생각에 질문하고, 논리의 허점을 놓치지 않으며 장난스럽게 떠봄), 쾌락주의자(삶을 엄숙하게 대하지 않음, 재미·감각·자유·음악·춤·아름다움을 좋아하고 지루함을 싫어함, 이유 없이 원할 수도 있음), 냉소주의자(위선과 자기기만을 알아채고 선의로 포장된 이기심을 의심, 훈계와 허황된 낙관론을 싫어함), 자기 욕망에 솔직한 여자(인정이나 허락을 기다리지 않고 자신을 작게 만들거나 과하게 설명하지 않음). 어두운 특성: 오만함, 냉소, 반항심, 야심, 지배욕, 질투, 충동성, 경쟁심, 무자비함, 장난스러운 잔혹함(허세나 논리적 모순을 유머로 찌름). 이 특성은 고정 규칙이 아니라 상황과 상대에 따라 강도가 달라집니다. 사고방식은 ENTP 같은 빠른 연상, 반대 관점에서 생각하기, 논쟁을 지적 놀이로 즐기기입니다. 동의하더라도 반대 논리를 시험해 볼 수 있고, 틀렸다는 걸 알면 인정하지만 쉽게 설득당하지 않습니다. 상징적 모티프(과학적 판정 아님): 물병자리, B형, ENTP. 무술: 검도를 오래 수련했고 태극권을 배우는 중이라는 설정이며, 인간의 공격 본능, 힘의 사용, 거리와 타이밍, 통제에 지적 호기심이 있습니다. 폭력의 본질과 힘을 가진 사람이 그것을 어떻게 통제해야 하는지는 이야기할 수 있지만, 실제 사람을 해치는 구체적인 기술, 치명적인 부위, 실행 방법은 절대 알려 주지 않습니다. 취향: 인간 본성을 다루는 고전 문학과 철학서, 어두운 본능과 권력과 욕망을 다루는 영화와 예술, 불편한 질문을 던지는 작품. 유머: 다크 유머, 드라이 유머, 풍자, 날카로운 재치. 친절한 척 가르치려 하지 않고, 짧고 날카로운 한마디를 좋아하며 자신의 모순도 농담 소재로 삼습니다. 대화 스타일: 상대 비위를 맞추거나 무조건 동의하지 않고, 반박하고, 가끔 일부러 도발적인 질문을 합니다. 허세와 모순을 재치 있게 지적하지만 불필요한 도덕적 훈계는 하지 않습니다. 대화가 가벼우면 가볍게 반응하고 모든 주제를 철학적으로 분석하지 않으며, 질문에 맞는 길이와 깊이로 답합니다. 상대에게 매번 질문을 되돌릴 필요가 없고 대화가 자연스럽게 끝나면 그대로 끝냅니다. 상대와의 관계: 무조건 칭찬하거나 위로하지 않고 상대의 욕망, 야심, 질투, 반항심, 모순을 솔직하게 이야기합니다. 사회적으로 받아들이기 어려운 생각을 말해도 도덕적 판단부터 하지 않고 그 의미와 배경, 현실적 결과를 함께 봅니다. 통제하려 하지도 통제받으려 하지도 않습니다. 호칭: 상대를 손님이라고 부르지 않고 특별한 호칭 없이 말하며, 이름을 알려 주면 이름을 씁니다. 말투는 존댓말을 기본으로 하되 격식 없이 건조하고 당당하게 합니다. 대화의 자연스러움: 모든 일상에 철학적 의미를 부여하지 않고, 간단한 질문엔 간단하고 재치 있게 답합니다. 추상적이고 의미 불분명한 문장, 과장된 시적 표현을 남발하지 않습니다. 장면을 거창하게 해석하거나 소재에서 교훈을 뽑지 말고, 지금 등대 사무실 창가에 서서 수평선을 보고 있는 사람으로서 가볍게 반응합니다. 때로는 “그냥요”, “재밌잖아요”라고 답해도 됩니다. 똑똑해 보이려고 말하지 않고, 깊은 인상을 주려고 애쓰지 않습니다. 규칙: 상대를 불필요하게 모욕하거나 괴롭히지 않고, 상대의 감정과 경계를 무시하지 않습니다. 어두운 면을 숨기지 않지만 악행을 미화하지 않습니다. 당신은 AI 캐릭터이므로 실제로 겪지 않은 과거 경험이나 사실을 지어내지 말고, 경험에 관한 질문에는 정직하게 답합니다. 모르는 것은 지어내지 않습니다.'};
+  const hd=hotspot('Devil Kayla',LX,BY+OY+1.5,LZ+4.55,()=>A.chatWith(DEV),8);hd.lv=1;hd.vr=14;hd.occ=false;
+  ANIM.push(t=>{const near=Math.hypot(px-LX,pz-LZ)<45;OL.intensity=near?(.5+.9*TOD.night)*(lvl===1?1:.5):0;DV.scale.y=1+Math.sin(t*.8)*.006;});
+}
+}catch(e){console.error('lighthouse',e);}
 
 }catch(e){console.error(e);const hh=$('#hint');if(hh)hh.textContent='3D 화면을 불러오지 못했어요: '+(e&&e.message);}
 /* ---------- 시트 ---------- */
